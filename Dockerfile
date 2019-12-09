@@ -1,25 +1,29 @@
-#
-# Dockerfile for DynamoDB Local
-#
-# https://aws.amazon.com/blogs/aws/dynamodb-local-for-desktop-development/
-#
-FROM openjdk:7-jre
-MAINTAINER Aaron Shapiro <aaron@shapiro.dev>
+FROM openjdk:8-jre
 
-# Create working space
-WORKDIR /var/dynamodb_wd
+MAINTAINER cnadiminti
 
-# Default port for DynamoDB Local
+RUN mkdir /var/dynamodb_local
+
+WORKDIR /var/dynamodb_local
+
+VOLUME ["/dynamodb_local_db"]
+
+ENV DYNAMODB_VERSION=latest
+
+ENV DYNAMODB_PORT=8000
+
+ENV JAVA_OPTS=
+
+RUN curl -sL -O https://s3-us-west-2.amazonaws.com/dynamodb-local/dynamodb_local_${DYNAMODB_VERSION}.tar.gz && \
+    curl -sL -O https://s3-us-west-2.amazonaws.com/dynamodb-local/dynamodb_local_${DYNAMODB_VERSION}.tar.gz.sha256 && \
+    sha256sum -c dynamodb_local_${DYNAMODB_VERSION}.tar.gz.sha256 && \
+    tar zxvf dynamodb_local_${DYNAMODB_VERSION}.tar.gz && \
+    rm dynamodb_local_${DYNAMODB_VERSION}.tar.gz dynamodb_local_${DYNAMODB_VERSION}.tar.gz.sha256
+
+COPY ./docker-entrypoint.sh /
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
+
 EXPOSE 8000
 
-# Get the package from Amazon
-RUN wget -O /tmp/dynamodb_local_latest https://s3-us-west-2.amazonaws.com/dynamodb-local/dynamodb_local_latest.tar.gz && \
-    tar xfz /tmp/dynamodb_local_latest && \
-    rm -f /tmp/dynamodb_local_latest
-
-# Default command for image
-ENTRYPOINT ["/usr/bin/java", "-Djava.library.path=.", "-jar", "DynamoDBLocal.jar", "-sharedDb", "-dbPath", "/var/dynamodb_local"]
-CMD ["-port", "8000"]
-
-# Add VOLUMEs to allow backup of config, logs and databases
-VOLUME ["/var/dynamodb_local", "/var/dynamodb_wd"]
+CMD ["--sharedDb", "-dbPath", "/dynamodb_local_db"]
